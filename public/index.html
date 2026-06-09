@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WEPONARE</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Start / name + mode selection -->
+  <div id="startScreen" class="overlay active">
+    <div class="pixel-box">
+      <div class="title-text">WEPONARE</div>
+      <div class="subtitle">ONLINE BATTLE</div>
+      <input type="text" id="nameInput" class="name-input" placeholder="YOUR NAME" maxlength="12" autocomplete="off" spellcheck="false">
+      <div class="mode-row">
+        <button class="mode-btn btn-pvp" onclick="joinGame('pvp')">&#9876; PvP</button>
+        <button class="mode-btn btn-coop" onclick="joinGame('coop')">&#9760; CO-OP</button>
+      </div>
+      <div class="hint-text">PvP: fight each other + monsters &nbsp;|&nbsp; Co-op: survive waves together</div>
+    </div>
+  </div>
+
+  <!-- Lobby / waiting -->
+  <div id="lobbyScreen" class="overlay hidden">
+    <div class="pixel-box">
+      <div class="title-text">WEPONARE</div>
+      <div class="subtitle">ONLINE BATTLE</div>
+      <div id="lobbyMsg" class="body-text">Connecting...</div>
+      <div id="xpDisplay" class="xp-text"></div>
+    </div>
+  </div>
+
+  <!-- Weapon unlock -->
+  <div id="unlockScreen" class="overlay hidden">
+    <div class="pixel-box unlock-box">
+      <div class="unlock-title">NEW WEAPON!</div>
+      <canvas id="unlockCanvas" width="120" height="80"></canvas>
+      <div id="unlockName" class="weapon-name"></div>
+      <div id="unlockDesc" class="body-text"></div>
+      <div class="hint-text">PRESS SPACE TO CONTINUE</div>
+    </div>
+  </div>
+
+  <!-- Round over -->
+  <div id="roundScreen" class="overlay hidden">
+    <div class="pixel-box">
+      <div id="roundTitle" class="title-text"></div>
+      <div id="roundStats" class="body-text"></div>
+      <div class="hint-text">NEXT ROUND STARTING...</div>
+    </div>
+  </div>
+
+  <!-- Disconnected -->
+  <div id="disconnectedScreen" class="overlay hidden">
+    <div class="pixel-box">
+      <div class="title-text">DISCONNECTED</div>
+      <div id="disconnectMsg" class="body-text">Opponent left the game.</div>
+      <div class="hint-text">Waiting for new opponent...</div>
+    </div>
+  </div>
+
+  <!-- Game canvas -->
+  <canvas id="gameCanvas" width="480" height="270"></canvas>
+
+  <script src="client.js"></script>
+</body>
+</html>
