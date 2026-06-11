@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>WEPONARE</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -14,11 +14,13 @@
       <div class="title-text">WEPONARE</div>
       <div class="subtitle">ONLINE BATTLE</div>
       <input type="text" id="nameInput" class="name-input" placeholder="YOUR NAME" maxlength="12" autocomplete="off" spellcheck="false">
+      <input type="password" id="passInput" class="name-input pass-input" placeholder="PASSWORD (saves progress)" maxlength="32" autocomplete="new-password" spellcheck="false">
       <div class="mode-row">
-        <button class="mode-btn btn-pvp" onclick="joinGame('pvp')">&#9876; PvP</button>
+        <button class="mode-btn btn-pvp"  onclick="joinGame('pvp')">&#9876; PvP</button>
         <button class="mode-btn btn-coop" onclick="joinGame('coop')">&#9760; CO-OP</button>
+        <button class="mode-btn btn-waves" onclick="joinGame('waves')">&#9670; WAVES</button>
       </div>
-      <div class="hint-text">PvP: fight each other + monsters &nbsp;|&nbsp; Co-op: survive waves together</div>
+      <div class="hint-text">PvP/Co-op: 2 players &nbsp;|&nbsp; Waves: solo endless mode</div>
     </div>
   </div>
 
@@ -39,15 +41,16 @@
       <canvas id="unlockCanvas" width="120" height="80"></canvas>
       <div id="unlockName" class="weapon-name"></div>
       <div id="unlockDesc" class="body-text"></div>
-      <div class="hint-text">PRESS SPACE TO CONTINUE</div>
+      <div id="unlockHint" class="hint-text">PRESS SPACE TO CONTINUE</div>
     </div>
   </div>
 
-  <!-- Round over -->
+  <!-- Round over / waves game over -->
   <div id="roundScreen" class="overlay hidden">
     <div class="pixel-box">
       <div id="roundTitle" class="title-text"></div>
       <div id="roundStats" class="body-text"></div>
+      <div id="leaderboardBox" class="leaderboard hidden"></div>
       <div class="hint-text">NEXT ROUND STARTING...</div>
     </div>
   </div>
@@ -63,6 +66,23 @@
 
   <!-- Game canvas -->
   <canvas id="gameCanvas" width="480" height="270"></canvas>
+
+  <!-- Touch controls (mobile only) -->
+  <div id="touchControls">
+    <div class="dpad">
+      <button id="btn-up" class="dpad-btn">&#9650;</button>
+      <div class="dpad-mid">
+        <button id="btn-left" class="dpad-btn">&#9664;</button>
+        <div class="dpad-center"></div>
+        <button id="btn-right" class="dpad-btn">&#9654;</button>
+      </div>
+      <button id="btn-down" class="dpad-btn">&#9660;</button>
+    </div>
+    <div class="action-btns">
+      <button id="btn-swap" class="action-btn">SWAP</button>
+      <button id="btn-attack" class="action-btn big-btn">ATK</button>
+    </div>
+  </div>
 
   <script src="client.js"></script>
 </body>

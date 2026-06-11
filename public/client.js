@@ -15,11 +15,22 @@ const PAL = {
   text:'#e8e8e8', white:'#ffffff',
   sword:'#c8d8e8', dagger:'#d4e8b0', axe:'#e8a040',
   spear:'#c0c8d0', bow:'#b89060', staff:'#cc66ff',
+  hammer:'#aab0b8', wand:'#88ddff', crossbow:'#cc8844',
+  flail:'#dd4444', greatsword:'#ddeeff',
   handle:'#6b3a1f', guard:'#8899aa',
 };
 
-const WEAPON_COLOR = { sword:PAL.sword, dagger:PAL.dagger, axe:PAL.axe, spear:PAL.spear, bow:PAL.bow, staff:PAL.staff };
-const WEAPON_DESC  = { sword:'Balanced blade', dagger:'Fast, low damage', axe:'Slow, heavy hit', spear:'Long reach', bow:'Fires arrows', staff:'AoE magic burst' };
+const WEAPON_COLOR = {
+  sword:PAL.sword, dagger:PAL.dagger, axe:PAL.axe, spear:PAL.spear,
+  bow:PAL.bow, staff:PAL.staff, hammer:PAL.hammer, wand:PAL.wand,
+  crossbow:PAL.crossbow, flail:PAL.flail, greatsword:PAL.greatsword,
+};
+const WEAPON_DESC = {
+  sword:'Balanced blade', dagger:'Fast, low damage', axe:'Slow, heavy hit',
+  spear:'Long reach', bow:'Fires arrows', staff:'AoE magic burst',
+  hammer:'Crushes with force', wand:'Rapid magic bolts', crossbow:'Piercing shot',
+  flail:'360° chain strike', greatsword:'Massive two-hander',
+};
 
 // ─── Connection ───────────────────────────────────────────────────────────────
 
@@ -31,12 +42,15 @@ let ws = null, myNum = null, connected = false;
 let prevState = null, currState = null, stateRecvTime = 0;
 const SERVER_TICK_MS = 50;
 
-let pendingName = 'PLAYER', pendingMode = 'pvp';
+let pendingName = 'PLAYER', pendingMode = 'pvp', pendingPass = '';
 let roomWasFull = false;
+let welcomeLeaderboard = [];
 
 function joinGame(mode) {
-  const raw = document.getElementById('nameInput').value.trim().toUpperCase();
-  pendingName = raw || 'PLAYER';
+  const raw  = document.getElementById('nameInput').value.trim().toUpperCase();
+  const pass = document.getElementById('passInput').value.trim();
+  pendingName = raw  || 'PLAYER';
+  pendingPass = pass || '';
   pendingMode = mode;
   document.getElementById('startScreen').className = 'overlay hidden';
   setLobbyMsg('Connecting...');
@@ -51,11 +65,16 @@ function connect() {
     const msg = JSON.parse(e.data);
     if (msg.type === 'welcome') {
       myNum = msg.num;
-      ws.send(JSON.stringify({ type: 'join', name: pendingName, mode: pendingMode }));
-      const modeLabel = pendingMode === 'coop' ? 'CO-OP' : 'PvP';
-      setLobbyMsg(myNum === 1
-        ? `<span class="p1-color">YOU ARE PLAYER 1</span><br><span style="color:#888">${modeLabel} MODE</span><br>Waiting for opponent...`
-        : `<span class="p2-color">YOU ARE PLAYER 2</span><br><span style="color:#888">${modeLabel} MODE</span><br>Game starting!`);
+      if (msg.leaderboard) welcomeLeaderboard = msg.leaderboard;
+      ws.send(JSON.stringify({ type: 'join', name: pendingName, mode: pendingMode, password: pendingPass }));
+      const modeLabel = pendingMode === 'coop' ? 'CO-OP' : pendingMode === 'waves' ? 'WAVES' : 'PvP';
+      if (pendingMode === 'waves') {
+        setLobbyMsg(`<span class="p1-color">WAVES MODE</span><br><span style="color:#888">SOLO ENDLESS</span><br>Loading...`);
+      } else {
+        setLobbyMsg(myNum === 1
+          ? `<span class="p1-color">YOU ARE PLAYER 1</span><br><span style="color:#888">${modeLabel} MODE</span><br>Waiting for opponent...`
+          : `<span class="p2-color">YOU ARE PLAYER 2</span><br><span style="color:#888">${modeLabel} MODE</span><br>Game starting!`);
+      }
       document.getElementById('xpDisplay').textContent = '';
     }
     if (msg.type === 'full') {
@@ -146,7 +165,7 @@ function drawSlashes() {
     const alpha = sl.timer / sl.maxTimer;
     const prog = 1 - alpha;
     const cx = Math.round(sl.x), cy = Math.round(sl.y);
-    const isRanged = sl.weaponId === 'bow' || sl.weaponId === 'staff';
+    const isRanged = ['bow', 'staff', 'wand', 'crossbow'].includes(sl.weaponId);
     ctx.save();
     ctx.lineCap = 'round';
     if (!isRanged) {
@@ -183,19 +202,61 @@ function drawSlashes() {
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 
+const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 const keys = {};
+const touchKeys = { up: false, down: false, left: false, right: false, attack: false, swap: false };
+
 window.addEventListener('keydown', (e) => {
   if (!keys[e.code]) { keys[e.code] = true; sendInput(); }
   if (['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter'].includes(e.code)) e.preventDefault();
-  if (e.code === 'Space' && currState && currState.gameState === 'WEAPON_UNLOCK') sendAckUnlock();
+  if (e.code === 'Space' && currState && currState.gameState === 'WEAPON_UNLOCK' && currState.pendingUnlock) sendAckUnlock();
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; sendInput(); });
 
 function sendInput() {
   if (!ws || ws.readyState !== 1) return;
-  ws.send(JSON.stringify({ type:'input', keys:{ up:!!keys['ArrowUp'], down:!!keys['ArrowDown'], left:!!keys['ArrowLeft'], right:!!keys['ArrowRight'], attack:!!keys['Space'], swap:!!keys['Enter'] } }));
+  ws.send(JSON.stringify({ type:'input', keys:{
+    up:    !!keys['ArrowUp']    || touchKeys.up,
+    down:  !!keys['ArrowDown']  || touchKeys.down,
+    left:  !!keys['ArrowLeft']  || touchKeys.left,
+    right: !!keys['ArrowRight'] || touchKeys.right,
+    attack:!!keys['Space']      || touchKeys.attack,
+    swap:  !!keys['Enter']      || touchKeys.swap,
+  }}));
 }
 function sendAckUnlock() { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'ack_unlock' })); }
+
+// ─── Touch Controls ───────────────────────────────────────────────────────────
+
+function setupTouchControls() {
+  if (!isTouchDevice) return;
+  const tc = document.getElementById('touchControls');
+  if (tc) tc.classList.add('visible');
+
+  const btnMap = [
+    ['btn-up','up'], ['btn-down','down'], ['btn-left','left'],
+    ['btn-right','right'], ['btn-attack','attack'], ['btn-swap','swap'],
+  ];
+  for (const [id, key] of btnMap) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const press = (e) => { e.preventDefault(); touchKeys[key] = true; sendInput(); };
+    const release = (e) => { e.preventDefault(); touchKeys[key] = false; sendInput(); };
+    el.addEventListener('touchstart', press, { passive: false });
+    el.addEventListener('touchend',   release, { passive: false });
+    el.addEventListener('touchcancel',release, { passive: false });
+  }
+
+  // Tap unlock screen to continue
+  const unlockOverlay = document.getElementById('unlockScreen');
+  if (unlockOverlay) {
+    unlockOverlay.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      if (currState && currState.gameState === 'WEAPON_UNLOCK' && currState.pendingUnlock) sendAckUnlock();
+    }, { passive: false });
+  }
+}
+setupTouchControls();
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
 
@@ -206,33 +267,66 @@ function setLobbyMsg(html) { showScreen('lobbyScreen'); document.getElementById(
 
 function updateScreens(state) {
   if (state.gameState === 'LOBBY') {
-    const modeStr = state.gameMode === 'coop' ? 'CO-OP MODE' : 'PvP MODE';
+    const modeStr = state.gameMode === 'coop' ? 'CO-OP MODE' : state.gameMode === 'waves' ? 'WAVES MODE' : 'PvP MODE';
     setLobbyMsg(myNum
       ? (myNum===1
           ? `<span class="p1-color">${state.playerNames?.p1||'PLAYER 1'}</span> &nbsp;[${modeStr}]<br>Waiting for opponent...`
           : `<span class="p2-color">${state.playerNames?.p2||'PLAYER 2'}</span> &nbsp;[${modeStr}]<br>Waiting...`)
-      : 'Waiting for opponent...');
+      : 'Waiting...');
     document.getElementById('xpDisplay').textContent = 'XP: ' + (state.xp || 0);
     return;
   }
   if (state.gameState === 'WEAPON_UNLOCK') {
     showScreen('unlockScreen');
     const w = state.pendingUnlock;
-    if (w) { document.getElementById('unlockName').textContent = w.toUpperCase(); document.getElementById('unlockDesc').textContent = WEAPON_DESC[w]||''; drawUnlockPreview(w); }
+    if (w) {
+      document.getElementById('unlockName').textContent = w.toUpperCase();
+      document.getElementById('unlockDesc').textContent = WEAPON_DESC[w]||'';
+      document.getElementById('unlockHint').textContent = isTouchDevice ? 'TAP TO CONTINUE' : 'PRESS SPACE TO CONTINUE';
+      drawUnlockPreview(w);
+    } else if (state.otherHasUnlocks) {
+      document.getElementById('unlockName').textContent = '';
+      document.getElementById('unlockDesc').textContent = 'Waiting for other player...';
+      document.getElementById('unlockHint').textContent = '';
+      const uc = document.getElementById('unlockCanvas');
+      const ux = uc.getContext('2d');
+      ux.clearRect(0,0,120,80);
+      ux.fillStyle='#1a1a2e'; ux.fillRect(0,0,120,80);
+    }
     return;
   }
   if (state.gameState === 'ROUND_OVER') {
     showScreen('roundScreen');
     const r = state.round;
-    if (state.gameMode === 'coop') {
+    const lb = document.getElementById('leaderboardBox');
+    if (state.gameMode === 'waves') {
+      document.getElementById('roundTitle').innerHTML = '<span style="color:#ffcc00">WAVES OVER</span>';
+      document.getElementById('roundStats').innerHTML =
+        `WAVE <span style="color:#ffcc00">${state.wave?.num||0}</span> REACHED<br>XP EARNED: ${state.xp}`;
+      if (state.leaderboard && state.leaderboard.length > 0) {
+        lb.classList.remove('hidden');
+        lb.innerHTML = '<div class="leaderboard-title">TOP SCORES</div>' +
+          state.leaderboard.map((e,i) =>
+            `<div class="lb-row${i===0?' lb-top':''}">`+
+            `<span>${i+1}. ${e.name}</span>`+
+            `<span>${e.waves} waves</span>`+
+            `<span style="color:#555">${e.date}</span></div>`
+          ).join('');
+      } else {
+        lb.classList.add('hidden');
+      }
+    } else if (state.gameMode === 'coop') {
+      lb.classList.add('hidden');
       document.getElementById('roundTitle').innerHTML = '<span style="color:#ffcc00">GAME OVER</span>';
       document.getElementById('roundStats').innerHTML = `WAVE ${state.wave?.num||0} REACHED<br>XP: ${state.xp}`;
     } else {
+      lb.classList.add('hidden');
       const p2 = state.players.p2;
       const wn = (p2 && p2.lives <= 0) ? 1 : 2;
       const wname = wn===1 ? (state.playerNames?.p1||'P1') : (state.playerNames?.p2||'P2');
       document.getElementById('roundTitle').innerHTML = `<span class="${wn===1?'p1-color':'p2-color'}">${wname} WINS!</span>`;
-      document.getElementById('roundStats').innerHTML = `${state.playerNames?.p1||'P1'}: ${r.p1Wins} wins &nbsp; ${state.playerNames?.p2||'P2'}: ${r.p2Wins} wins<br>XP: ${state.xp}`;
+      document.getElementById('roundStats').innerHTML =
+        `${state.playerNames?.p1||'P1'}: ${r.p1Wins} wins &nbsp; ${state.playerNames?.p2||'P2'}: ${r.p2Wins} wins<br>XP: ${state.xp}`;
     }
     return;
   }
@@ -432,24 +526,81 @@ function drawWeaponSprite(p, px, py) {
     ctx.fillRect(d===1?hx+8:hx-9, hy-1, 2, 3);
 
   } else if (wId === 'staff') {
-    // Staff body
     ctx.fillStyle = '#3a1860';
     ctx.fillRect(d===1?hx:hx-11, hy-1, 11, 2);
     ctx.fillStyle = '#5a2888';
     ctx.fillRect(d===1?hx:hx-11, hy-1, 10, 1);
-    // Connector
     ctx.fillStyle = '#aa44ff';
     ctx.fillRect(d===1?hx+11:hx-13, hy-1, 2, 2);
-    // Orb
     const ox = d===1?hx+15:hx-15;
     ctx.fillStyle = '#dd88ff';
     ctx.beginPath(); ctx.arc(ox, hy, 4, 0, Math.PI*2); ctx.fill();
-    // Orb highlight
     ctx.fillStyle = '#ffccff';
     ctx.beginPath(); ctx.arc(ox-1, hy-1, 1.5, 0, Math.PI*2); ctx.fill();
-    // Orb glow
     ctx.fillStyle = 'rgba(221,136,255,0.3)';
     ctx.beginPath(); ctx.arc(ox, hy, 7, 0, Math.PI*2); ctx.fill();
+
+  } else if (wId === 'hammer') {
+    ctx.fillStyle = PAL.handle;
+    ctx.fillRect(d===1?hx:hx-8, hy-1, 8, 2);
+    ctx.fillStyle = '#555566';
+    ctx.fillRect(d===1?hx+8:hx-10, hy-2, 2, 4);
+    ctx.fillStyle = wc;
+    ctx.fillRect(d===1?hx+10:hx-18, hy-5, 8, 10);
+    ctx.fillStyle = '#dde0e8';
+    ctx.fillRect(d===1?hx+10:hx-18, hy-5, 2, 10);
+
+  } else if (wId === 'wand') {
+    ctx.fillStyle = '#6a3010';
+    ctx.fillRect(d===1?hx:hx-9, hy, 9, 1);
+    ctx.fillStyle = '#9a5020';
+    ctx.fillRect(d===1?hx:hx-9, hy-1, 9, 1);
+    const tx = d===1?hx+11:hx-11;
+    ctx.fillStyle = wc;
+    ctx.fillRect(tx-1, hy-2, 3, 5); ctx.fillRect(tx-2, hy-1, 5, 3);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(tx, hy, 1, 1);
+    ctx.fillStyle = 'rgba(136,221,255,0.4)';
+    ctx.beginPath(); ctx.arc(tx, hy, 5, 0, Math.PI*2); ctx.fill();
+
+  } else if (wId === 'crossbow') {
+    ctx.fillStyle = PAL.handle;
+    ctx.fillRect(d===1?hx:hx-9, hy-1, 9, 3);
+    ctx.lineWidth = 2; ctx.strokeStyle = '#8B5E3C';
+    ctx.beginPath(); ctx.arc(d===1?hx+3:hx-3, hy, 8, Math.PI*0.2, Math.PI*1.8, d===1); ctx.stroke();
+    ctx.lineWidth = 1; ctx.strokeStyle = '#ccbb88';
+    ctx.beginPath(); ctx.moveTo(d===1?hx+3:hx-3, hy-8); ctx.lineTo(d===1?hx+3:hx-3, hy+8); ctx.stroke();
+    ctx.fillStyle = '#cc9933';
+    ctx.fillRect(d===1?hx+3:hx-9, hy-1, 6, 2);
+    ctx.fillStyle = '#aaddff';
+    ctx.fillRect(d===1?hx+9:hx-10, hy-1, 3, 2);
+
+  } else if (wId === 'flail') {
+    ctx.fillStyle = PAL.handle;
+    ctx.fillRect(d===1?hx:hx-7, hy-1, 7, 2);
+    ctx.fillStyle = '#999aaa';
+    for (let ci = 0; ci < 3; ci++) {
+      ctx.fillRect(d===1?hx+7+ci*3:hx-10-ci*3, hy, 2, 1);
+    }
+    const bx = d===1?hx+18:hx-18;
+    ctx.fillStyle = '#882222';
+    ctx.beginPath(); ctx.arc(bx, hy, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = wc;
+    ctx.fillRect(bx-5, hy, 2, 1); ctx.fillRect(bx+3, hy, 2, 1);
+    ctx.fillRect(bx, hy-5, 1, 2); ctx.fillRect(bx, hy+3, 1, 2);
+
+  } else if (wId === 'greatsword') {
+    ctx.fillStyle = PAL.handle;
+    ctx.fillRect(d===1?hx:hx-7, hy-1, 7, 3);
+    ctx.fillStyle = PAL.guard;
+    ctx.fillRect(d===1?hx-2:hx+5, hy-2, 3, 5);
+    ctx.fillRect(d===1?hx+7:hx-10, hy-5, 3, 10);
+    ctx.fillStyle = wc;
+    ctx.fillRect(d===1?hx+10:hx-22, hy-1, 12, 3);
+    ctx.fillStyle = '#eef4ff';
+    ctx.fillRect(d===1?hx+10:hx-22, hy-1, 11, 1);
+    ctx.fillStyle = wc;
+    ctx.fillRect(d===1?hx+22:hx-24, hy, 2, 1);
+    ctx.fillRect(d===1?hx+24:hx-25, hy+1, 1, 1);
   }
 
   ctx.restore();
@@ -479,6 +630,16 @@ function drawProjectiles(projs) {
       ctx.beginPath(); ctx.arc(pr.x,pr.y,4,0,Math.PI*2); ctx.stroke();
       ctx.fillStyle='rgba(170,68,255,0.5)';
       ctx.beginPath(); ctx.arc(pr.x,pr.y,6,0,Math.PI*2); ctx.fill();
+    } else if(pr.weaponId==='wand') {
+      ctx.fillStyle=PAL.wand;
+      ctx.beginPath(); ctx.arc(pr.x,pr.y,2,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(136,221,255,0.45)';
+      ctx.beginPath(); ctx.arc(pr.x,pr.y,4,0,Math.PI*2); ctx.fill();
+    } else if(pr.weaponId==='crossbow') {
+      ctx.strokeStyle=PAL.crossbow; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(pr.x,pr.y); ctx.lineTo(pr.x-pr.dx*5,pr.y-pr.dy*5); ctx.stroke();
+      ctx.fillStyle='#ddaa55'; ctx.fillRect(Math.round(pr.x)-1,Math.round(pr.y)-1,3,2);
+      ctx.fillStyle='#aaddff'; ctx.fillRect(Math.round(pr.x)+1,Math.round(pr.y)-1,2,2);
     }
   }
 }
@@ -526,12 +687,13 @@ function drawHUD(state) {
     ctx.fillStyle=PAL.text; pixelText(wt,Math.round(CANVAS_W/2-wt.length*3),6);
     ctx.fillStyle='#888'; pixelText(mt,Math.round(CANVAS_W/2-mt.length*3),13);
   }
-  // Mode badge (coop = green, pvp = default)
+  // Mode badge
   if(state.gameMode==='coop') {
-    ctx.fillStyle='rgba(0,180,80,0.25)';
-    ctx.fillRect(CANVAS_W/2-16,0,32,8);
-    ctx.fillStyle='#44ff88';
-    pixelText('COOP',CANVAS_W/2-12,1);
+    ctx.fillStyle='rgba(0,180,80,0.25)'; ctx.fillRect(CANVAS_W/2-16,0,32,8);
+    ctx.fillStyle='#44ff88'; pixelText('COOP',CANVAS_W/2-12,1);
+  } else if(state.gameMode==='waves') {
+    ctx.fillStyle='rgba(200,150,0,0.2)'; ctx.fillRect(CANVAS_W/2-20,0,40,8);
+    ctx.fillStyle='#ffcc00'; pixelText('WAVES',CANVAS_W/2-15,1);
   }
   ctx.fillStyle=PAL.xp; pixelText('XP:'+state.xp,10,CANVAS_H-10);
 }
@@ -551,13 +713,15 @@ function drawWeaponPanel(state) {
   ctx.fillStyle='rgba(0,0,0,0.72)';
   ctx.fillRect(panelX-4,panelY-3,totalW+8,slotH+6);
 
-  const hx=panelX+totalW+10, hy=panelY;
-  ctx.save();
-  ctx.font='5px "Courier New",monospace'; ctx.textBaseline='top'; ctx.textAlign='left';
-  ctx.fillStyle='#505060'; ctx.fillText('ARROWS MOVE',hx,hy);
-  ctx.fillStyle='#505060'; ctx.fillText('SPACE  ATK', hx,hy+7);
-  ctx.fillStyle='#505060'; ctx.fillText('ENTER  SWAP',hx,hy+14);
-  ctx.restore();
+  if (!isTouchDevice) {
+    const hx=panelX+totalW+10, hy=panelY;
+    ctx.save();
+    ctx.font='5px "Courier New",monospace'; ctx.textBaseline='top'; ctx.textAlign='left';
+    ctx.fillStyle='#505060'; ctx.fillText('ARROWS MOVE',hx,hy);
+    ctx.fillStyle='#505060'; ctx.fillText('SPACE  ATK', hx,hy+7);
+    ctx.fillStyle='#505060'; ctx.fillText('ENTER  SWAP',hx,hy+14);
+    ctx.restore();
+  }
 
   for(let i=0;i<weapons.length;i++) {
     const wId=weapons[i], sel=wId===mp.weaponId;
@@ -609,6 +773,36 @@ function drawWeaponIconMini(wId, cx, cy, color, bright) {
     ctx.fillStyle=bright?'#5a2888':'#303030'; ctx.fillRect(icx-6,icy-1,10,2);
     ctx.fillStyle=bright?'#dd88ff':'#404050';
     ctx.beginPath(); ctx.arc(icx+6,icy,3,0,Math.PI*2); ctx.fill();
+  } else if(wId==='hammer') {
+    ctx.fillStyle=h; ctx.fillRect(icx-6,icy-1,6,2);
+    ctx.fillStyle=c;
+    ctx.fillRect(icx,icy-4,3,8); ctx.fillRect(icx+3,icy-5,3,10);
+    ctx.fillStyle='#dde0e8'; ctx.fillRect(icx,icy-4,1,8);
+  } else if(wId==='wand') {
+    ctx.fillStyle=h; ctx.fillRect(icx-6,icy-1,10,2);
+    ctx.fillStyle=c; ctx.fillRect(icx+4,icy-2,3,5); ctx.fillRect(icx+3,icy-1,5,3);
+    ctx.fillStyle=bright?'rgba(136,221,255,0.6)':'rgba(136,221,255,0.2)';
+    ctx.beginPath(); ctx.arc(icx+6,icy,4,0,Math.PI*2); ctx.fill();
+  } else if(wId==='crossbow') {
+    ctx.fillStyle=h; ctx.fillRect(icx-6,icy-1,8,2);
+    ctx.lineWidth=1.5; ctx.strokeStyle=bright?'#8B5E3C':'#333';
+    ctx.beginPath(); ctx.arc(icx+2,icy,5,Math.PI*0.2,Math.PI*1.8,true); ctx.stroke();
+    ctx.lineWidth=1; ctx.strokeStyle=bright?'#ccbb88':'#333';
+    ctx.beginPath(); ctx.moveTo(icx+2,icy-5); ctx.lineTo(icx+2,icy+5); ctx.stroke();
+  } else if(wId==='flail') {
+    ctx.fillStyle=h; ctx.fillRect(icx-6,icy-1,5,2);
+    ctx.fillStyle='#888';
+    for(let i=0;i<3;i++) ctx.fillRect(icx-1+i*3,icy,2,1);
+    ctx.fillStyle=bright?'#882222':'#333';
+    ctx.beginPath(); ctx.arc(icx+8,icy,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=c;
+    ctx.fillRect(icx+3,icy,2,1); ctx.fillRect(icx+13,icy,2,1);
+    ctx.fillRect(icx+8,icy-5,1,2); ctx.fillRect(icx+8,icy+3,1,2);
+  } else if(wId==='greatsword') {
+    ctx.fillStyle=h; ctx.fillRect(icx-7,icy-1,5,3);
+    ctx.fillStyle=PAL.guard; ctx.fillRect(icx-2,icy-4,2,8);
+    ctx.fillStyle=c; ctx.fillRect(icx,icy-1,9,3); ctx.fillRect(icx+9,icy,1,1);
+    ctx.fillStyle='#eef4ff'; ctx.fillRect(icx,icy-1,8,1);
   }
 }
 
@@ -645,4 +839,40 @@ function drawUnlockPreview(weaponId) {
   else if(weaponId==='spear'){ux.fillRect(cx-28,cy-1,50,2);ux.beginPath();ux.moveTo(cx+22,cy-6);ux.lineTo(cx+34,cy);ux.lineTo(cx+22,cy+6);ux.fill();}
   else if(weaponId==='bow'){ux.lineWidth=3;ux.beginPath();ux.arc(cx,cy,20,Math.PI*0.3,Math.PI*1.7);ux.stroke();ux.lineWidth=1;ux.strokeStyle='#886633';ux.beginPath();ux.moveTo(cx,cy-20);ux.lineTo(cx,cy+20);ux.stroke();}
   else if(weaponId==='staff'){ux.fillRect(cx-30,cy-2,50,4);ux.fillStyle='#dd88ff';ux.beginPath();ux.arc(cx+26,cy,10,0,Math.PI*2);ux.fill();ux.fillStyle='rgba(221,136,255,0.4)';ux.beginPath();ux.arc(cx+26,cy,16,0,Math.PI*2);ux.fill();}
+  else if(weaponId==='hammer'){
+    ux.fillRect(cx-26,cy-2,26,4);
+    ux.fillStyle='#555566'; ux.fillRect(cx,cy-4,4,8);
+    ux.fillStyle=wc; ux.fillRect(cx+4,cy-16,14,32);
+    ux.fillStyle='#dde0e8'; ux.fillRect(cx+4,cy-16,4,32);
+  }
+  else if(weaponId==='wand'){
+    ux.fillRect(cx-28,cy-2,36,4);
+    const tx=cx+12;
+    ux.fillStyle=wc; ux.fillRect(tx-4,cy-8,9,16); ux.fillRect(tx-8,cy-4,17,8);
+    ux.fillStyle='#ffffff'; ux.fillRect(tx-1,cy-1,3,3);
+    ux.fillStyle='rgba(136,221,255,0.5)'; ux.beginPath(); ux.arc(tx,cy,14,0,Math.PI*2); ux.fill();
+  }
+  else if(weaponId==='crossbow'){
+    ux.fillRect(cx-28,cy-3,34,6);
+    ux.lineWidth=4; ux.beginPath(); ux.arc(cx+8,cy,20,Math.PI*0.25,Math.PI*1.75); ux.stroke();
+    ux.lineWidth=1; ux.strokeStyle='#886633'; ux.beginPath(); ux.moveTo(cx+8,cy-20); ux.lineTo(cx+8,cy+20); ux.stroke();
+    ux.fillStyle='#cc9933'; ux.fillRect(cx+8,cy-2,18,4);
+    ux.fillStyle='#aaddff'; ux.fillRect(cx+22,cy-2,8,4);
+  }
+  else if(weaponId==='flail'){
+    ux.fillRect(cx-26,cy-3,18,6);
+    ux.fillStyle='#999aaa';
+    for(let i=0;i<5;i++) ux.fillRect(cx-8+i*7,cy-2,5,4);
+    ux.fillStyle='#882222'; ux.beginPath(); ux.arc(cx+26,cy,12,0,Math.PI*2); ux.fill();
+    ux.fillStyle=wc;
+    ux.fillRect(cx+12,cy-2,4,4); ux.fillRect(cx+36,cy-2,4,4);
+    ux.fillRect(cx+24,cy-14,4,4); ux.fillRect(cx+24,cy+10,4,4);
+  }
+  else if(weaponId==='greatsword'){
+    ux.fillRect(cx-34,cy-3,70,7);
+    ux.fillRect(cx-34,cy-5,66,11);
+    ux.fillStyle='#eef4ff'; ux.fillRect(cx-34,cy-4,64,3);
+    ux.fillStyle=wc; ux.fillRect(cx+28,cy-12,8,26);
+    ux.fillStyle='#8899aa'; ux.fillRect(cx-14,cy-2,8,5);
+  }
 }

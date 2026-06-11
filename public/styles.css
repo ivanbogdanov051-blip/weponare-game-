@@ -19,12 +19,14 @@ body {
   min-height: 100vh;
   overflow: hidden;
   font-family: 'Courier New', Courier, monospace;
+  touch-action: none;
 }
 
 #gameCanvas {
   display: block;
   width: min(960px, 100vw);
-  height: min(540px, 100vh);
+  aspect-ratio: 16 / 9;
+  max-height: 100vh;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   position: relative;
@@ -126,30 +128,58 @@ body {
 .name-input:focus { border-color: var(--c-accent); box-shadow: 0 0 8px rgba(170,68,255,0.3); }
 .name-input::placeholder { color: #333; }
 
+/* ── Name / pass input ── */
+
+.pass-input { margin-top: -8px; }
+
 /* ── Mode buttons ── */
 
 .mode-row {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   justify-content: center;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 .mode-btn {
   flex: 1;
+  min-width: 70px;
   background: #0a0a18;
   border: 2px solid #2a2a4a;
   color: var(--c-text);
   font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 2px;
-  padding: 10px 8px;
+  padding: 10px 6px;
   cursor: pointer;
   transition: border-color 0.1s, color 0.1s, background 0.1s;
 }
 .mode-btn:hover { background: #151525; }
-.btn-pvp:hover  { border-color: var(--c-p2); color: var(--c-p2); }
-.btn-coop:hover { border-color: var(--c-p1); color: var(--c-p1); }
-.btn-pvp:active, .btn-coop:active { transform: translate(1px,1px); }
+.btn-pvp:hover   { border-color: var(--c-p2);  color: var(--c-p2);  }
+.btn-coop:hover  { border-color: var(--c-p1);  color: var(--c-p1);  }
+.btn-waves:hover { border-color: var(--c-gold); color: var(--c-gold); }
+.mode-btn:active { transform: translate(1px,1px); }
+
+/* ── Leaderboard ── */
+
+.leaderboard {
+  margin-top: 12px;
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--c-text);
+  line-height: 1.6;
+}
+.leaderboard.hidden { display: none; }
+.leaderboard-title {
+  color: var(--c-gold);
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.lb-row { display: flex; justify-content: space-between; gap: 16px; }
+.lb-row.lb-top { color: var(--c-gold); }
 
 /* ── Misc ── */
 
@@ -166,3 +196,101 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
+
+/* ── Touch Controls ── */
+
+#touchControls {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 0 16px 16px;
+  z-index: 5;
+  pointer-events: none;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+#touchControls.visible { display: flex; }
+
+.dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.dpad-mid {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.dpad-center {
+  width: 48px;
+  height: 48px;
+}
+
+.dpad-btn {
+  width: 52px;
+  height: 52px;
+  background: rgba(15, 15, 40, 0.82);
+  border: 2px solid rgba(80, 100, 200, 0.55);
+  color: rgba(180, 200, 255, 0.9);
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 8px;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.dpad-btn:active {
+  background: rgba(40, 40, 110, 0.92);
+  border-color: rgba(120, 150, 255, 0.9);
+}
+
+.action-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.action-btn {
+  background: rgba(15, 15, 40, 0.82);
+  border: 2px solid rgba(180, 80, 40, 0.55);
+  color: rgba(255, 200, 150, 0.9);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 8px;
+  min-width: 76px;
+  text-align: center;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.action-btn.big-btn {
+  padding: 18px 24px;
+  font-size: 15px;
+  letter-spacing: 3px;
+  border-color: rgba(255, 80, 40, 0.7);
+  background: rgba(50, 12, 12, 0.85);
+  min-width: 88px;
+}
+
+.action-btn:active { background: rgba(60, 20, 10, 0.92); border-color: rgba(255, 130, 80, 0.95); }
+.action-btn.big-btn:active { background: rgba(100, 25, 15, 0.95); }
