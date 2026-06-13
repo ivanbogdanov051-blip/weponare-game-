@@ -41,7 +41,7 @@ const wsUrl = isLocal
 
 let ws = null, myNum = null, connected = false;
 let prevState = null, currState = null, stateRecvTime = 0;
-const SERVER_TICK_MS = 50;
+const SERVER_TICK_MS = 20;
 
 let pendingName = 'PLAYER', pendingMode = 'pvp', pendingPass = '';
 let roomWasFull = false;
@@ -135,16 +135,35 @@ function interpState(prev, curr, t) {
 
 const slashes = [];
 
+function nearestEnemyAngle(cp, state, playerKey) {
+  const px = cp.x + cp.w / 2, py = cp.y + cp.h / 2;
+  let nearest = null, bestDist = Infinity;
+  for (const [k, ep] of Object.entries(state.players || {})) {
+    if (k !== playerKey && ep && !ep.dead) {
+      const d = Math.hypot(ep.x + ep.w / 2 - px, ep.y + ep.h / 2 - py);
+      if (d < bestDist) { bestDist = d; nearest = ep; }
+    }
+  }
+  for (const m of state.monsters || []) {
+    const d = Math.hypot(m.x + m.w / 2 - px, m.y + m.h / 2 - py);
+    if (d < bestDist) { bestDist = d; nearest = m; }
+  }
+  if (!nearest) return null;
+  return Math.atan2(nearest.y + nearest.h / 2 - py, nearest.x + nearest.w / 2 - px);
+}
+
 function detectSlashes(prev, curr) {
   for (const key of ['p1', 'p2']) {
     const cp = curr.players?.[key], pp = prev.players?.[key];
     if (!cp || cp.dead) continue;
     const fresh = cp.swingTimer > 0 && (!pp || pp.swingTimer <= 0 || cp.swingTimer > pp.swingTimer);
     if (fresh) {
-      const fwd = cp.facing * (cp.w + 10);
+      const angle = nearestEnemyAngle(cp, curr, key) ?? (cp.facing === 1 ? 0 : Math.PI);
+      const r = cp.w + 10;
       slashes.push({
-        x: cp.x + cp.w / 2 + fwd,
-        y: cp.y + cp.h / 2,
+        x: cp.x + cp.w / 2 + Math.cos(angle) * r,
+        y: cp.y + cp.h / 2 + Math.sin(angle) * r,
+        angle,
         facing: cp.facing,
         weaponId: cp.weaponId,
         timer: 220, maxTimer: 220,
@@ -171,18 +190,17 @@ function drawSlashes() {
     ctx.lineCap = 'round';
     if (!isRanged) {
       const r = 12 + prog * 6;
-      const d = sl.facing;
-      const aS = d === 1 ? -Math.PI * 0.7 : Math.PI * 0.3;
-      const aE = d === 1 ?  Math.PI * 0.2 : Math.PI * 1.7;
+      const aim = sl.angle ?? (sl.facing === 1 ? 0 : Math.PI);
+      const span = Math.PI * 0.85;
       ctx.globalAlpha = alpha * 0.9;
       ctx.strokeStyle = sl.color;
       ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(cx, cy, r, aS, aE, d !== 1); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, r, aim - span / 2, aim + span / 2, false); ctx.stroke();
       if (alpha > 0.5) {
         ctx.globalAlpha = ((alpha - 0.5) / 0.5) * 0.6;
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(cx, cy, r - 4, aS, aE, d !== 1); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, r - 4, aim - span / 2, aim + span / 2, false); ctx.stroke();
       }
     } else {
       ctx.globalAlpha = alpha * 0.75;
@@ -268,12 +286,16 @@ function setLobbyMsg(html) { showScreen('lobbyScreen'); document.getElementById(
 
 function updateScreens(state) {
   if (state.gameState === 'LOBBY') {
-    const modeStr = state.gameMode === 'coop' ? 'CO-OP MODE' : state.gameMode === 'waves' ? 'WAVES MODE' : 'PvP MODE';
-    setLobbyMsg(myNum
-      ? (myNum===1
-          ? `<span class="p1-color">${state.playerNames?.p1||'PLAYER 1'}</span> &nbsp;[${modeStr}]<br>Waiting for opponent...`
-          : `<span class="p2-color">${state.playerNames?.p2||'PLAYER 2'}</span> &nbsp;[${modeStr}]<br>Waiting...`)
-      : 'Waiting...');
+    if (state.gameMode === 'waves') {
+      setLobbyMsg(`<span style="color:#ffcc00">WAVES MODE</span><br><span style="color:#888">SOLO ENDLESS</span><br>Loading...`);
+    } else {
+      const modeStr = state.gameMode === 'coop' ? 'CO-OP MODE' : 'PvP MODE';
+      setLobbyMsg(myNum
+        ? (myNum===1
+            ? `<span class="p1-color">${state.playerNames?.p1||'PLAYER 1'}</span> &nbsp;[${modeStr}]<br>Waiting for opponent...`
+            : `<span class="p2-color">${state.playerNames?.p2||'PLAYER 2'}</span> &nbsp;[${modeStr}]<br>Waiting...`)
+        : 'Waiting...');
+    }
     document.getElementById('xpDisplay').textContent = 'XP: ' + (state.xp || 0);
     return;
   }

@@ -18,7 +18,7 @@ const PROGRESS_FILE = path.join(__dirname, 'progress.json');
 const CANVAS_W = 480, CANVAS_H = 270;
 const ARENA_X = 8, ARENA_Y = 8;
 const ARENA_W = CANVAS_W - 16, ARENA_H = CANVAS_H - 16;
-const TICK_MS = 50;
+const TICK_MS = 20;
 
 const WEAPONS = [
   { id: 'sword',      name: 'SWORD',      damage: 20, range: 22,  atkSpd: 400,  type: 'melee',  unlockXp: 0    },
@@ -95,7 +95,7 @@ function makePlayer(num, xp) {
     x: num === 1 ? 80 : 388,
     y: 135,
     w: 12, h: 16,
-    speed: 1.4,
+    speed: 2.2,
     hp: 100, maxHp: 100,
     lives: 3,
     facing: num === 1 ? 1 : -1,
@@ -208,7 +208,7 @@ function startGame() {
   room.particles  = [];
   room.unlockQueues = { p1: [], p2: [] };
   room.gameState  = 'GAMEPLAY';
-  startWave(1);
+  if (room.gameMode !== 'pvp') startWave(1);
 }
 
 function applyDamage(target, dmg, attackerKey) {
@@ -435,22 +435,24 @@ setInterval(() => {
   });
 
   // ── Wave spawner ──
-  if (room.wave.betweenTimer > 0) {
-    room.wave.betweenTimer -= dt;
-    if (room.wave.betweenTimer <= 0) startWave(room.wave.num + 1);
-  } else if (room.wave.spawnQueue > 0) {
-    room.wave.spawnTimer -= dt;
-    if (room.wave.spawnTimer <= 0) {
-      spawnMonster();
-      room.wave.spawnQueue--;
-      room.wave.spawnTimer = 1200;
+  if (room.gameMode !== 'pvp') {
+    if (room.wave.betweenTimer > 0) {
+      room.wave.betweenTimer -= dt;
+      if (room.wave.betweenTimer <= 0) startWave(room.wave.num + 1);
+    } else if (room.wave.spawnQueue > 0) {
+      room.wave.spawnTimer -= dt;
+      if (room.wave.spawnTimer <= 0) {
+        spawnMonster();
+        room.wave.spawnQueue--;
+        room.wave.spawnTimer = 1200;
+      }
+    } else if (room.wave.monstersLeft <= 0 && room.monsters.length === 0) {
+      room.wave.betweenTimer = 3000;
+      room.particles.push({
+        type: 'waveclear', x: CANVAS_W / 2, y: CANVAS_H / 2 - 10,
+        text: 'WAVE ' + room.wave.num + ' CLEAR!', timer: 2500,
+      });
     }
-  } else if (room.wave.monstersLeft <= 0 && room.monsters.length === 0) {
-    room.wave.betweenTimer = 3000;
-    room.particles.push({
-      type: 'waveclear', x: CANVAS_W / 2, y: CANVAS_H / 2 - 10,
-      text: 'WAVE ' + room.wave.num + ' CLEAR!', timer: 2500,
-    });
   }
 
   // ── Particles ──
@@ -574,6 +576,11 @@ wss.on('connection', (ws) => {
   }
 
   const isP1 = !room.p1;
+  if (!isP1 && room.p1Joined && room.gameMode === 'waves') {
+    ws.send(JSON.stringify({ type: 'full' }));
+    ws.close();
+    return;
+  }
   if (isP1) room.p1 = ws;
   else      room.p2 = ws;
 
