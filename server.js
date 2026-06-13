@@ -134,6 +134,7 @@ const room = {
   playerNames: { p1: 'PLAYER 1', p2: 'PLAYER 2' },
   passwords: { p1: '', p2: '' },
   playerXp: { p1: 0, p2: 0 },
+  playerSkins: { p1: null, p2: null },
   p1Joined: false, p2Joined: false,
   players: { p1: null, p2: null },
   inputs: {
@@ -220,6 +221,8 @@ function startGame() {
   const p2Xp = room.playerXp.p2;
   room.players.p1 = makePlayer(1, p1Xp);
   room.players.p2 = (room.gameMode !== 'waves') ? makePlayer(2, p2Xp) : null;
+  if (room.players.p1 && room.playerSkins.p1) room.players.p1.skin = room.playerSkins.p1;
+  if (room.players.p2 && room.playerSkins.p2) room.players.p2.skin = room.playerSkins.p2;
   room.monsters   = [];
   room.projectiles = [];
   room.particles  = [];
@@ -493,17 +496,10 @@ function doAttack(p, pKey) {
       ...room.monsters,
     ].filter(t => t && !t.dead);
 
-    if (w.swing360) {
-      const hitRect1 = { x: p.x + p.w,     y: p.y - 4, w: w.range, h: p.h + 8 };
-      const hitRect2 = { x: p.x - w.range, y: p.y - 4, w: w.range, h: p.h + 8 };
-      for (const t of targets) {
-        if (aabb(hitRect1, t) || aabb(hitRect2, t)) applyDamage(t, w.damage, pKey);
-      }
-    } else {
-      const hx = p.facing === 1 ? p.x + p.w : p.x - w.range;
-      const hitRect = { x: hx, y: p.y - 4, w: w.range, h: p.h + 8 };
-      for (const t of targets) {
-        if (aabb(hitRect, t)) applyDamage(t, w.damage, pKey);
+    const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+    for (const t of targets) {
+      if (Math.hypot(t.x + t.w / 2 - cx, t.y + t.h / 2 - cy) <= w.range) {
+        applyDamage(t, w.damage, pKey);
       }
     }
   } else {
@@ -625,7 +621,7 @@ wss.on('connection', (ws) => {
               hatIdx:   Math.max(0, Math.min(4, Number(rawSkin.hatIdx)   || 0)) }
           : getPlayerSkin(pw);
         setPlayerSkin(pw, skin);
-        if (room.players[myKey]) room.players[myKey].skin = skin;
+        room.playerSkins[myKey] = skin;
 
         if (isP1 && msg.mode) {
           room.gameMode = ['pvp', 'coop', 'waves'].includes(msg.mode) ? msg.mode : 'pvp';
@@ -665,10 +661,11 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     if (room.p1 === ws) { room.p1 = null; room.p1Joined = false; room.playerNames.p1 = 'PLAYER 1'; room.passwords.p1 = ''; }
     if (room.p2 === ws) { room.p2 = null; room.p2Joined = false; room.playerNames.p2 = 'PLAYER 2'; room.passwords.p2 = ''; }
-    room.gameState = 'LOBBY';
-    room.gameMode  = 'pvp';
-    room.players   = { p1: null, p2: null };
-    room.playerXp  = { p1: 0, p2: 0 };
+    room.gameState   = 'LOBBY';
+    room.gameMode    = 'pvp';
+    room.players     = { p1: null, p2: null };
+    room.playerXp    = { p1: 0, p2: 0 };
+    room.playerSkins = { p1: null, p2: null };
     room.unlockQueues = { p1: [], p2: [] };
     broadcastState();
   });

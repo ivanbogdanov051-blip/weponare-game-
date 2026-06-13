@@ -27,6 +27,8 @@ body {
   width: min(960px, 100vw);
   aspect-ratio: 16 / 9;
   max-height: 100vh;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
   position: relative;
   z-index: 1;
 }

@@ -515,12 +515,12 @@ function drawPlayer(p, baseColor, label) {
 function drawNametag(cx, bottomY, label, color) {
   const isMe = myNum && ((label===currState?.playerNames?.p1 && myNum===1)||(label===currState?.playerNames?.p2 && myNum===2));
   ctx.save();
-  ctx.font = '7px "Courier New",monospace';
+  ctx.font = '9px "Courier New",monospace';
   ctx.textBaseline = 'bottom'; ctx.textAlign = 'center';
   const rx = Math.round(cx);
   const tw = ctx.measureText(label).width;
-  ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.fillRect(rx - tw/2 - 2, bottomY - 8, tw + 4, 9);
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  ctx.fillRect(rx - tw/2 - 2, bottomY - 10, tw + 4, 11);
   ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillText(label, rx+1, bottomY+1);
   ctx.fillStyle = isMe ? PAL.white : color;
   ctx.fillText(label, rx, bottomY);
@@ -790,7 +790,7 @@ function drawParticles(particles) {
       ctx.globalAlpha=1;
     } else if(p.type==='waveclear') {
       ctx.globalAlpha=Math.min(1,p.timer/2500*3);
-      ctx.fillStyle=PAL.xp; ctx.font='10px "Courier New",monospace';
+      ctx.fillStyle=PAL.xp; ctx.font='12px "Courier New",monospace';
       ctx.textBaseline='middle'; ctx.textAlign='center';
       ctx.fillText(p.text,p.x,p.y); ctx.textAlign='left'; ctx.globalAlpha=1;
     }
@@ -803,10 +803,10 @@ function drawHUD(state) {
   const p1 = state.players.p1, p2 = state.players.p2;
   const names = state.playerNames || {};
 
-  ctx.fillStyle = 'rgba(0,0,0,0.65)';
-  ctx.fillRect(0, 0, CANVAS_W, 22);
+  ctx.fillStyle = 'rgba(0,0,0,0.70)';
+  ctx.fillRect(0, 0, CANVAS_W, 26);
 
-  ctx.font = '8px "Courier New",monospace';
+  ctx.font = '10px "Courier New",monospace';
   ctx.textBaseline = 'top';
 
   if (p1) {
@@ -814,8 +814,8 @@ function drawHUD(state) {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#000'; ctx.fillText(names.p1 || 'P1', 5, 3);
     ctx.fillStyle = col;    ctx.fillText(names.p1 || 'P1', 4, 2);
-    drawHpBar(4, 13, 74, 5, p1.hp / p1.maxHp, col, '#330000');
-    for (let i = 0; i < (p1.lives || 0); i++) { ctx.fillStyle = col; ctx.fillRect(4 + i*7, 19, 5, 2); }
+    drawHpBar(4, 15, 74, 5, p1.hp / p1.maxHp, col, '#330000');
+    for (let i = 0; i < (p1.lives || 0); i++) { ctx.fillStyle = col; ctx.fillRect(4 + i*7, 21, 5, 3); }
   }
 
   if (p2) {
@@ -824,8 +824,8 @@ function drawHUD(state) {
     ctx.fillStyle = '#000'; ctx.fillText(names.p2 || 'P2', CANVAS_W - 3, 3);
     ctx.fillStyle = col;    ctx.fillText(names.p2 || 'P2', CANVAS_W - 4, 2);
     ctx.textAlign = 'left';
-    drawHpBar(CANVAS_W - 80, 13, 74, 5, p2.hp / p2.maxHp, col, '#330000');
-    for (let i = 0; i < (p2.lives || 0); i++) { ctx.fillStyle = col; ctx.fillRect(CANVAS_W - 9 - i*7, 19, 5, 2); }
+    drawHpBar(CANVAS_W - 80, 15, 74, 5, p2.hp / p2.maxHp, col, '#330000');
+    for (let i = 0; i < (p2.lives || 0); i++) { ctx.fillStyle = col; ctx.fillRect(CANVAS_W - 9 - i*7, 21, 5, 3); }
   }
 
   const w = state.wave;
@@ -833,7 +833,9 @@ function drawHUD(state) {
   if (w && state.gameMode !== 'pvp') {
     ctx.fillStyle = '#000'; ctx.fillText('WAVE ' + w.num, CANVAS_W/2 + 1, 3);
     ctx.fillStyle = PAL.text; ctx.fillText('WAVE ' + w.num, CANVAS_W/2, 2);
-    ctx.fillStyle = '#888'; ctx.fillText(w.monstersLeft + ' LEFT', CANVAS_W/2, 13);
+    ctx.font = '8px "Courier New",monospace';
+    ctx.fillStyle = '#999'; ctx.fillText(w.monstersLeft + ' LEFT', CANVAS_W/2, 15);
+    ctx.font = '10px "Courier New",monospace';
   } else if (state.gameMode === 'coop') {
     ctx.fillStyle = '#44ff88'; ctx.fillText('CO-OP', CANVAS_W/2, 7);
   }
@@ -862,10 +864,10 @@ function drawWeaponPanel(state) {
   if (!isTouchDevice) {
     const hx=panelX+totalW+10, hy=panelY;
     ctx.save();
-    ctx.font='7px "Courier New",monospace'; ctx.textBaseline='top'; ctx.textAlign='left';
+    ctx.font='8px "Courier New",monospace'; ctx.textBaseline='top'; ctx.textAlign='left';
     ctx.fillStyle='#505060'; ctx.fillText('ARROWS MOVE',hx,hy);
-    ctx.fillStyle='#505060'; ctx.fillText('SPACE  ATK', hx,hy+8);
-    ctx.fillStyle='#505060'; ctx.fillText('ENTER  SWAP',hx,hy+16);
+    ctx.fillStyle='#505060'; ctx.fillText('SPACE  ATK', hx,hy+9);
+    ctx.fillStyle='#505060'; ctx.fillText('ENTER  SWAP',hx,hy+18);
     ctx.restore();
   }
 
@@ -883,7 +885,7 @@ function drawWeaponPanel(state) {
     }
     drawWeaponIconMini(wId,sx+slotW/2,sy+9,wc,sel);
     ctx.save();
-    ctx.font='6px "Courier New",monospace'; ctx.textBaseline='bottom'; ctx.textAlign='center';
+    ctx.font='7px "Courier New",monospace'; ctx.textBaseline='bottom'; ctx.textAlign='center';
     ctx.fillStyle=sel?wc:'#444';
     ctx.fillText(wId.slice(0,4).toUpperCase(),sx+slotW/2,sy+slotH-1);
     ctx.restore();
@@ -962,7 +964,7 @@ function drawHpBar(x,y,w,h,ratio,fg,bg) {
 
 function pixelText(text, x, y) {
   const saved = ctx.fillStyle;
-  ctx.font = '8px "Courier New",monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+  ctx.font = '10px "Courier New",monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
   ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillText(text, x+1, y+1);
   ctx.fillStyle = saved; ctx.fillText(text, x, y);
 }
