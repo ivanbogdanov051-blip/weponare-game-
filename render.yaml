@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: weponare-game
+    name: weponare
     env: node
     plan: free
     buildCommand: npm install

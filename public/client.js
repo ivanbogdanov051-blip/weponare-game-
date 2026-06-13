@@ -34,7 +34,8 @@ const WEAPON_DESC = {
 
 // ─── Connection ───────────────────────────────────────────────────────────────
 
-const wsUrl = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+const isLocal = ['localhost', '127.0.0.1', '10.0.2.2'].includes(location.hostname);
+const wsUrl = isLocal
   ? `ws://${location.hostname}:${location.port}`
   : `wss://${location.hostname}`;
 
