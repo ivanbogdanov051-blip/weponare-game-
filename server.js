@@ -78,6 +78,22 @@ function getLeaderboard() {
   return loadProgress().leaderboard || [];
 }
 
+function getPlayerSkin(password) {
+  if (!password) return { colorIdx: 0, hatIdx: 0 };
+  return loadProgress().skins?.[password] || { colorIdx: 0, hatIdx: 0 };
+}
+
+function setPlayerSkin(password, skin) {
+  if (!password) return;
+  const data = loadProgress();
+  if (!data.skins) data.skins = {};
+  data.skins[password] = {
+    colorIdx: Math.max(0, Math.min(7, Number(skin.colorIdx) || 0)),
+    hatIdx:   Math.max(0, Math.min(4, Number(skin.hatIdx)   || 0)),
+  };
+  saveProgress(data);
+}
+
 function getUnlockedWeaponIds(xp) {
   return WEAPONS.filter(w => w.unlockXp <= xp).map(w => w.id);
 }
@@ -107,6 +123,7 @@ function makePlayer(num, xp) {
     hitFlash: 0,
     dead: false,
     respawnTimer: 0,
+    skin: { colorIdx: 0, hatIdx: 0 },
   };
 }
 
@@ -540,11 +557,11 @@ function buildStateMsg(playerNum) {
       p1: p1 ? { x: p1.x, y: p1.y, w: p1.w, h: p1.h, hp: p1.hp, maxHp: p1.maxHp,
                   lives: p1.lives, facing: p1.facing, weaponId: weapon(p1).id,
                   hitFlash: p1.hitFlash, dead: p1.dead, swingTimer: p1.swingTimer,
-                  unlockedWeapons: p1.unlockedWeapons } : null,
+                  unlockedWeapons: p1.unlockedWeapons, skin: p1.skin } : null,
       p2: p2 ? { x: p2.x, y: p2.y, w: p2.w, h: p2.h, hp: p2.hp, maxHp: p2.maxHp,
                   lives: p2.lives, facing: p2.facing, weaponId: weapon(p2).id,
                   hitFlash: p2.hitFlash, dead: p2.dead, swingTimer: p2.swingTimer,
-                  unlockedWeapons: p2.unlockedWeapons } : null,
+                  unlockedWeapons: p2.unlockedWeapons, skin: p2.skin } : null,
     },
     monsters:    room.monsters.map(m => ({ x: m.x, y: m.y, w: m.w, h: m.h, hp: m.hp, maxHp: m.maxHp, hitFlash: m.hitFlash })),
     projectiles: room.projectiles.map(pr => ({ x: pr.x, y: pr.y, dx: pr.dx, dy: pr.dy, weaponId: pr.weaponId, isAoe: pr.isAoe })),
@@ -601,6 +618,14 @@ wss.on('connection', (ws) => {
         const pw = String(msg.password || '').trim().replace(/[<>&"']/g, '').slice(0, 32);
         room.passwords[myKey] = pw;
         room.playerXp[myKey]  = getPlayerXp(pw);
+
+        const rawSkin = msg.skin && typeof msg.skin === 'object' ? msg.skin : null;
+        const skin = rawSkin
+          ? { colorIdx: Math.max(0, Math.min(7, Number(rawSkin.colorIdx) || 0)),
+              hatIdx:   Math.max(0, Math.min(4, Number(rawSkin.hatIdx)   || 0)) }
+          : getPlayerSkin(pw);
+        setPlayerSkin(pw, skin);
+        if (room.players[myKey]) room.players[myKey].skin = skin;
 
         if (isP1 && msg.mode) {
           room.gameMode = ['pvp', 'coop', 'waves'].includes(msg.mode) ? msg.mode : 'pvp';

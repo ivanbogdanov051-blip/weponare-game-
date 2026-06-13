@@ -32,6 +32,25 @@ const WEAPON_DESC = {
   flail:'360° chain strike', greatsword:'Massive two-hander',
 };
 
+// ─── Skins ────────────────────────────────────────────────────────────────────
+
+const SKIN_COLORS = ['#4488ff','#ff4444','#44cc44','#aa44ff','#ff8833','#44ddee','#ff44aa','#ffcc00'];
+const SKIN_HATS   = ['NONE','CAP','CROWN','HORNS','SPIKY'];
+
+function loadLocalSkin() {
+  try { return JSON.parse(localStorage.getItem('weponare_skin')) || { colorIdx: 0, hatIdx: 0 }; }
+  catch { return { colorIdx: 0, hatIdx: 0 }; }
+}
+function saveLocalSkin(s) {
+  try { localStorage.setItem('weponare_skin', JSON.stringify(s)); } catch {}
+}
+let pendingSkin = loadLocalSkin();
+
+function getSkinColor(p, defaultColor) {
+  if (!p || !p.skin) return defaultColor;
+  return SKIN_COLORS[p.skin.colorIdx] ?? defaultColor;
+}
+
 // ─── Connection ───────────────────────────────────────────────────────────────
 
 const isLocal = ['localhost', '127.0.0.1', '10.0.2.2'].includes(location.hostname);
@@ -67,7 +86,7 @@ function connect() {
     if (msg.type === 'welcome') {
       myNum = msg.num;
       if (msg.leaderboard) welcomeLeaderboard = msg.leaderboard;
-      ws.send(JSON.stringify({ type: 'join', name: pendingName, mode: pendingMode, password: pendingPass }));
+      ws.send(JSON.stringify({ type: 'join', name: pendingName, mode: pendingMode, password: pendingPass, skin: pendingSkin }));
       const modeLabel = pendingMode === 'coop' ? 'CO-OP' : pendingMode === 'waves' ? 'WAVES' : 'PvP';
       if (pendingMode === 'waves') {
         setLobbyMsg(`<span class="p1-color">WAVES MODE</span><br><span style="color:#888">SOLO ENDLESS</span><br>Loading...`);
@@ -277,9 +296,87 @@ function setupTouchControls() {
 }
 setupTouchControls();
 
+// ─── Skin Screen ──────────────────────────────────────────────────────────────
+
+function openSkinsScreen() {
+  showScreen('skinsScreen');
+  buildSkinGrids();
+  renderSkinPreview();
+}
+function closeSkinsScreen() { showScreen('startScreen'); }
+
+function selectSkinColor(idx) {
+  pendingSkin.colorIdx = idx;
+  saveLocalSkin(pendingSkin);
+  buildSkinGrids();
+  renderSkinPreview();
+}
+function selectSkinHat(idx) {
+  pendingSkin.hatIdx = idx;
+  saveLocalSkin(pendingSkin);
+  buildSkinGrids();
+  renderSkinPreview();
+}
+
+function buildSkinGrids() {
+  const cg = document.getElementById('colorGrid');
+  if (cg) cg.innerHTML = SKIN_COLORS.map((c, i) =>
+    `<div class="skin-color${i === pendingSkin.colorIdx ? ' selected' : ''}" style="background:${c}" onclick="selectSkinColor(${i})"></div>`
+  ).join('');
+  const hg = document.getElementById('hatGrid');
+  if (hg) hg.innerHTML = SKIN_HATS.map((h, i) =>
+    `<div class="skin-hat${i === pendingSkin.hatIdx ? ' selected' : ''}" onclick="selectSkinHat(${i})">${h}</div>`
+  ).join('');
+}
+
+function renderSkinPreview() {
+  const uc = document.getElementById('skinPreviewCanvas');
+  if (!uc) return;
+  const ux = uc.getContext('2d');
+  ux.imageSmoothingEnabled = false;
+  ux.clearRect(0, 0, 72, 80);
+  ux.fillStyle = '#1a1a2e'; ux.fillRect(0, 0, 72, 80);
+
+  const color = SKIN_COLORS[pendingSkin.colorIdx] || '#4488ff';
+  ux.save();
+  const sc = 3.5;
+  ux.translate(36, 40 - 8 * sc / 2);
+  ux.scale(sc, sc);
+  const bx = -6, by = 0;
+  ux.fillStyle = 'rgba(0,0,0,0.3)'; ux.fillRect(bx + 1, by + 16, 10, 2);
+  ux.fillStyle = color;
+  ux.fillRect(bx + 1, by + 11, 4, 5); ux.fillRect(bx + 7, by + 11, 4, 5);
+  ux.fillRect(bx, by + 5, 12, 7);
+  ux.fillStyle = 'rgba(0,0,0,0.25)'; ux.fillRect(bx, by + 5, 12, 2);
+  ux.fillStyle = color; ux.fillRect(bx + 1, by, 10, 5);
+  ux.fillStyle = '#fff'; ux.fillRect(bx + 8, by + 1, 2, 2);
+  drawHatOnCtx(ux, bx, by, color, pendingSkin.hatIdx);
+  ux.restore();
+}
+
+function drawHatOnCtx(ux, x, y, color, hatIdx) {
+  const hat = SKIN_HATS[hatIdx] || 'NONE';
+  if (hat === 'CAP') {
+    ux.fillStyle = '#223344'; ux.fillRect(x - 1, y - 3, 14, 2); ux.fillRect(x + 1, y - 6, 10, 3);
+    ux.fillStyle = '#334455'; ux.fillRect(x + 1, y - 6, 9, 1);
+  } else if (hat === 'CROWN') {
+    ux.fillStyle = '#ddaa00';
+    ux.fillRect(x, y - 4, 2, 3); ux.fillRect(x + 4, y - 6, 3, 5); ux.fillRect(x + 9, y - 4, 2, 3);
+    ux.fillStyle = '#ffee44';
+    ux.fillRect(x + 1, y - 4, 1, 1); ux.fillRect(x + 5, y - 6, 1, 1); ux.fillRect(x + 10, y - 4, 1, 1);
+  } else if (hat === 'HORNS') {
+    ux.fillStyle = '#aa1111'; ux.fillRect(x + 1, y - 6, 2, 5); ux.fillRect(x + 9, y - 6, 2, 5);
+    ux.fillStyle = '#ee3333'; ux.fillRect(x + 1, y - 7, 2, 1); ux.fillRect(x + 9, y - 7, 2, 1);
+  } else if (hat === 'SPIKY') {
+    ux.fillStyle = color;
+    ux.fillRect(x + 1, y - 3, 2, 2); ux.fillRect(x + 4, y - 5, 2, 4);
+    ux.fillRect(x + 7, y - 3, 2, 2); ux.fillRect(x + 10, y - 2, 2, 1);
+  }
+}
+
 // ─── Screens ──────────────────────────────────────────────────────────────────
 
-const SCREENS = ['startScreen','lobbyScreen','unlockScreen','roundScreen','disconnectedScreen'];
+const SCREENS = ['startScreen','lobbyScreen','unlockScreen','roundScreen','disconnectedScreen','skinsScreen'];
 function showScreen(id) { SCREENS.forEach(s => { const el=document.getElementById(s); if(el) el.className='overlay '+(s===id?'active':'hidden'); }); }
 function hideAllScreens() { SCREENS.forEach(s => { const el=document.getElementById(s); if(el) el.className='overlay hidden'; }); }
 function setLobbyMsg(html) { showScreen('lobbyScreen'); document.getElementById('lobbyMsg').innerHTML = html; }
@@ -401,41 +498,53 @@ function drawArena() {
 
 function drawPlayer(p, baseColor, label) {
   if (p.dead) return;
-  const c = p.hitFlash > 0 ? PAL.white : baseColor;
+  const skinCol = getSkinColor(p, baseColor);
+  const c = p.hitFlash > 0 ? PAL.white : skinCol;
   const x = Math.round(p.x), y = Math.round(p.y);
-  // Shadow
   ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(x+1,y+p.h,p.w-2,2);
-  // Legs
   ctx.fillStyle = c; ctx.fillRect(x+1,y+11,4,5); ctx.fillRect(x+7,y+11,4,5);
-  // Torso
   ctx.fillRect(x,y+5,p.w,7);
   ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(x,y+5,p.w,2);
-  // Head
   ctx.fillStyle=c; ctx.fillRect(x+1,y,p.w-2,5);
-  // Eye
   ctx.fillStyle=PAL.white; ctx.fillRect(p.facing===1?x+8:x+2,y+1,2,2);
-  // Nametag
-  drawNametag(x+p.w/2, y-2, label, baseColor);
-  // Weapon
+  drawHat(x, y, skinCol, p.skin?.hatIdx);
+  drawNametag(x+p.w/2, y-2, label, skinCol);
   drawWeaponSprite(p, x, y);
 }
 
 function drawNametag(cx, bottomY, label, color) {
   const isMe = myNum && ((label===currState?.playerNames?.p1 && myNum===1)||(label===currState?.playerNames?.p2 && myNum===2));
   ctx.save();
-  ctx.font = '5px "Courier New",monospace';
-  ctx.textBaseline='bottom'; ctx.textAlign='center';
+  ctx.font = '7px "Courier New",monospace';
+  ctx.textBaseline = 'bottom'; ctx.textAlign = 'center';
   const rx = Math.round(cx);
-  // backdrop
   const tw = ctx.measureText(label).width;
-  ctx.fillStyle='rgba(0,0,0,0.6)';
-  ctx.fillRect(rx - tw/2 - 2, bottomY - 6, tw + 4, 7);
-  // shadow
-  ctx.fillStyle='rgba(0,0,0,0.8)'; ctx.fillText(label, rx+1, bottomY+1);
-  // text
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(rx - tw/2 - 2, bottomY - 8, tw + 4, 9);
+  ctx.fillStyle = 'rgba(0,0,0,0.9)'; ctx.fillText(label, rx+1, bottomY+1);
   ctx.fillStyle = isMe ? PAL.white : color;
   ctx.fillText(label, rx, bottomY);
   ctx.restore();
+}
+
+function drawHat(x, y, color, hatIdx) {
+  const hat = SKIN_HATS[hatIdx] || 'NONE';
+  if (hat === 'CAP') {
+    ctx.fillStyle = '#223344'; ctx.fillRect(x-1, y-3, 14, 2); ctx.fillRect(x+1, y-6, 10, 3);
+    ctx.fillStyle = '#334455'; ctx.fillRect(x+1, y-6, 9, 1);
+  } else if (hat === 'CROWN') {
+    ctx.fillStyle = '#ddaa00';
+    ctx.fillRect(x, y-4, 2, 3); ctx.fillRect(x+4, y-6, 3, 5); ctx.fillRect(x+9, y-4, 2, 3);
+    ctx.fillStyle = '#ffee44';
+    ctx.fillRect(x+1, y-4, 1, 1); ctx.fillRect(x+5, y-6, 1, 1); ctx.fillRect(x+10, y-4, 1, 1);
+  } else if (hat === 'HORNS') {
+    ctx.fillStyle = '#aa1111'; ctx.fillRect(x+1, y-6, 2, 5); ctx.fillRect(x+9, y-6, 2, 5);
+    ctx.fillStyle = '#ee3333'; ctx.fillRect(x+1, y-7, 2, 1); ctx.fillRect(x+9, y-7, 2, 1);
+  } else if (hat === 'SPIKY') {
+    ctx.fillStyle = color;
+    ctx.fillRect(x+1, y-3, 2, 2); ctx.fillRect(x+4, y-5, 2, 4);
+    ctx.fillRect(x+7, y-3, 2, 2); ctx.fillRect(x+10, y-2, 2, 1);
+  }
 }
 
 // ─── Weapon Sprites ───────────────────────────────────────────────────────────
@@ -691,34 +800,48 @@ function drawParticles(particles) {
 // ─── HUD ──────────────────────────────────────────────────────────────────────
 
 function drawHUD(state) {
-  const p1=state.players.p1, p2=state.players.p2;
-  const names=state.playerNames||{};
-  if(p1) {
-    ctx.fillStyle=PAL.p1; pixelText(names.p1||'P1',10,6);
-    drawHpBar(22,5,60,5,p1.hp/p1.maxHp,PAL.p1,'#330000');
-    for(let i=0;i<(p1.lives||0);i++){ctx.fillStyle=PAL.p1;ctx.fillRect(10+i*5,13,3,3);}
+  const p1 = state.players.p1, p2 = state.players.p2;
+  const names = state.playerNames || {};
+
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.fillRect(0, 0, CANVAS_W, 22);
+
+  ctx.font = '8px "Courier New",monospace';
+  ctx.textBaseline = 'top';
+
+  if (p1) {
+    const col = getSkinColor(p1, PAL.p1);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#000'; ctx.fillText(names.p1 || 'P1', 5, 3);
+    ctx.fillStyle = col;    ctx.fillText(names.p1 || 'P1', 4, 2);
+    drawHpBar(4, 13, 74, 5, p1.hp / p1.maxHp, col, '#330000');
+    for (let i = 0; i < (p1.lives || 0); i++) { ctx.fillStyle = col; ctx.fillRect(4 + i*7, 19, 5, 2); }
   }
-  if(p2) {
-    const label=names.p2||'P2';
-    ctx.fillStyle=PAL.p2; pixelText(label,CANVAS_W-10-label.length*4,6);
-    drawHpBar(CANVAS_W-84,5,60,5,p2.hp/p2.maxHp,PAL.p2,'#330000');
-    for(let i=0;i<(p2.lives||0);i++){ctx.fillStyle=PAL.p2;ctx.fillRect(CANVAS_W-12-i*5,13,3,3);}
+
+  if (p2) {
+    const col = getSkinColor(p2, PAL.p2);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#000'; ctx.fillText(names.p2 || 'P2', CANVAS_W - 3, 3);
+    ctx.fillStyle = col;    ctx.fillText(names.p2 || 'P2', CANVAS_W - 4, 2);
+    ctx.textAlign = 'left';
+    drawHpBar(CANVAS_W - 80, 13, 74, 5, p2.hp / p2.maxHp, col, '#330000');
+    for (let i = 0; i < (p2.lives || 0); i++) { ctx.fillStyle = col; ctx.fillRect(CANVAS_W - 9 - i*7, 19, 5, 2); }
   }
-  const w=state.wave;
-  if(w) {
-    const wt='WAVE '+w.num, mt=w.monstersLeft+' LEFT';
-    ctx.fillStyle=PAL.text; pixelText(wt,Math.round(CANVAS_W/2-wt.length*3),6);
-    ctx.fillStyle='#888'; pixelText(mt,Math.round(CANVAS_W/2-mt.length*3),13);
+
+  const w = state.wave;
+  ctx.textAlign = 'center';
+  if (w && state.gameMode !== 'pvp') {
+    ctx.fillStyle = '#000'; ctx.fillText('WAVE ' + w.num, CANVAS_W/2 + 1, 3);
+    ctx.fillStyle = PAL.text; ctx.fillText('WAVE ' + w.num, CANVAS_W/2, 2);
+    ctx.fillStyle = '#888'; ctx.fillText(w.monstersLeft + ' LEFT', CANVAS_W/2, 13);
+  } else if (state.gameMode === 'coop') {
+    ctx.fillStyle = '#44ff88'; ctx.fillText('CO-OP', CANVAS_W/2, 7);
   }
-  // Mode badge
-  if(state.gameMode==='coop') {
-    ctx.fillStyle='rgba(0,180,80,0.25)'; ctx.fillRect(CANVAS_W/2-16,0,32,8);
-    ctx.fillStyle='#44ff88'; pixelText('COOP',CANVAS_W/2-12,1);
-  } else if(state.gameMode==='waves') {
-    ctx.fillStyle='rgba(200,150,0,0.2)'; ctx.fillRect(CANVAS_W/2-20,0,40,8);
-    ctx.fillStyle='#ffcc00'; pixelText('WAVES',CANVAS_W/2-15,1);
-  }
-  ctx.fillStyle=PAL.xp; pixelText('XP:'+state.xp,10,CANVAS_H-10);
+  ctx.textAlign = 'left';
+
+  ctx.textBaseline = 'bottom';
+  ctx.fillStyle = '#000'; ctx.fillText('XP:' + state.xp, 5, CANVAS_H - 3);
+  ctx.fillStyle = PAL.xp; ctx.fillText('XP:' + state.xp, 4, CANVAS_H - 4);
 }
 
 // ─── Weapon Panel ─────────────────────────────────────────────────────────────
@@ -739,10 +862,10 @@ function drawWeaponPanel(state) {
   if (!isTouchDevice) {
     const hx=panelX+totalW+10, hy=panelY;
     ctx.save();
-    ctx.font='5px "Courier New",monospace'; ctx.textBaseline='top'; ctx.textAlign='left';
+    ctx.font='7px "Courier New",monospace'; ctx.textBaseline='top'; ctx.textAlign='left';
     ctx.fillStyle='#505060'; ctx.fillText('ARROWS MOVE',hx,hy);
-    ctx.fillStyle='#505060'; ctx.fillText('SPACE  ATK', hx,hy+7);
-    ctx.fillStyle='#505060'; ctx.fillText('ENTER  SWAP',hx,hy+14);
+    ctx.fillStyle='#505060'; ctx.fillText('SPACE  ATK', hx,hy+8);
+    ctx.fillStyle='#505060'; ctx.fillText('ENTER  SWAP',hx,hy+16);
     ctx.restore();
   }
 
@@ -760,7 +883,7 @@ function drawWeaponPanel(state) {
     }
     drawWeaponIconMini(wId,sx+slotW/2,sy+9,wc,sel);
     ctx.save();
-    ctx.font='4px "Courier New",monospace'; ctx.textBaseline='bottom'; ctx.textAlign='center';
+    ctx.font='6px "Courier New",monospace'; ctx.textBaseline='bottom'; ctx.textAlign='center';
     ctx.fillStyle=sel?wc:'#444';
     ctx.fillText(wId.slice(0,4).toUpperCase(),sx+slotW/2,sy+slotH-1);
     ctx.restore();
@@ -837,11 +960,11 @@ function drawHpBar(x,y,w,h,ratio,fg,bg) {
   ctx.strokeStyle='#000'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,h);
 }
 
-function pixelText(text,x,y) {
-  const saved=ctx.fillStyle;
-  ctx.font='6px "Courier New",monospace'; ctx.textBaseline='top'; ctx.textAlign='left';
-  ctx.fillStyle='rgba(0,0,0,0.75)'; ctx.fillText(text,x+1,y+1);
-  ctx.fillStyle=saved; ctx.fillText(text,x,y);
+function pixelText(text, x, y) {
+  const saved = ctx.fillStyle;
+  ctx.font = '8px "Courier New",monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillText(text, x+1, y+1);
+  ctx.fillStyle = saved; ctx.fillText(text, x, y);
 }
 
 // ─── Unlock Preview ───────────────────────────────────────────────────────────

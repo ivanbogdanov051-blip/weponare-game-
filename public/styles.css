@@ -179,6 +179,81 @@ body {
 .lb-row { display: flex; justify-content: space-between; gap: 16px; }
 .lb-row.lb-top { color: var(--c-gold); }
 
+/* ── Skin customization ── */
+
+.skin-btn {
+  margin-top: 12px;
+  background: none;
+  border: 1px solid #333355;
+  color: #555577;
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 6px 16px;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color 0.1s, color 0.1s;
+}
+.skin-btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+
+.skins-box { min-width: 280px; }
+
+#skinPreviewCanvas {
+  display: block;
+  margin: 0 auto 12px;
+  image-rendering: pixelated;
+  width: 144px;
+  height: 160px;
+  border: 1px solid #2a2a4a;
+  background: var(--c-arena);
+}
+
+.skin-section-title {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: #666688;
+  margin: 10px 0 6px;
+  text-align: center;
+}
+
+.skin-grid {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.skin-color {
+  width: 28px;
+  height: 28px;
+  border: 2px solid #222;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+}
+.skin-color:hover { transform: scale(1.12); }
+.skin-color.selected { border-color: #fff; box-shadow: 0 0 6px #fff6; }
+
+.hat-grid {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.skin-hat {
+  background: #0a0a18;
+  border: 2px solid #2a2a4a;
+  color: #888;
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
+}
+.skin-hat:hover { border-color: #555; color: #ccc; }
+.skin-hat.selected { border-color: var(--c-accent); color: var(--c-accent); }
+
 /* ── Misc ── */
 
 #unlockCanvas {

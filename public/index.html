@@ -21,6 +21,21 @@
         <button class="mode-btn btn-waves" onclick="joinGame('waves')">&#9670; WAVES</button>
       </div>
       <div class="hint-text">PvP/Co-op: 2 players &nbsp;|&nbsp; Waves: solo endless mode</div>
+      <button class="skin-btn" onclick="openSkinsScreen()">&#10022; CUSTOMIZE CHARACTER</button>
+    </div>
+  </div>
+
+  <!-- Skins / character customization -->
+  <div id="skinsScreen" class="overlay hidden">
+    <div class="pixel-box skins-box">
+      <div class="title-text" style="font-size:22px;margin-bottom:4px">CUSTOMIZE</div>
+      <div class="subtitle">CHARACTER SKIN</div>
+      <canvas id="skinPreviewCanvas" width="72" height="80"></canvas>
+      <div class="skin-section-title">COLOR</div>
+      <div id="colorGrid" class="skin-grid"></div>
+      <div class="skin-section-title">HAT</div>
+      <div id="hatGrid" class="hat-grid"></div>
+      <button class="mode-btn" style="margin-top:20px;width:100%" onclick="closeSkinsScreen()">&#10003; BACK</button>
     </div>
   </div>
 
