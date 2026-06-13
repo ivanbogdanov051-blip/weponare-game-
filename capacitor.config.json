@@ -1,0 +1,8 @@
+{
+  "appId": "com.weponare.game",
+  "appName": "Weponare",
+  "webDir": "public",
+  "server": {
+    "url": "https://weponare.onrender.com"
+  }
+}
